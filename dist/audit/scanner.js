@@ -1,11 +1,5 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.runAudit = runAudit;
-const child_process_1 = require("child_process");
-const chalk_1 = __importDefault(require("chalk"));
+import { execSync } from 'child_process';
+import chalk from 'chalk';
 // 🛡️ Only ignore the actual DevGit source files, nothing else!
 const IGNORE_LIST = [
     'src/audit/scanner.ts',
@@ -27,13 +21,13 @@ const RULES = [
         regex: /\.env/gi
     }
 ];
-async function runAudit() {
-    console.log(chalk_1.default.blue('🔍 [CleanPR] Running Deep Security Scan...'));
+export async function runAudit() {
+    console.log(chalk.blue('🔍 [CleanPR] Running Deep Security Scan...'));
     try {
         // 1. Force stage
-        (0, child_process_1.execSync)('git add .');
+        execSync('git add .');
         // 2. Get staged files
-        const stagedFiles = (0, child_process_1.execSync)('git diff --cached --name-only', { encoding: 'utf8' })
+        const stagedFiles = execSync('git diff --cached --name-only', { encoding: 'utf8' })
             .split('\n')
             .filter(Boolean);
         let issuesFound = 0;
@@ -42,23 +36,23 @@ async function runAudit() {
             if (IGNORE_LIST.some(ignored => file.includes(ignored)))
                 continue;
             // 3. Get the content
-            const fileContent = (0, child_process_1.execSync)(`git show :0:"${file}"`, { encoding: 'utf8' }).toLowerCase();
+            const fileContent = execSync(`git show :0:"${file}"`, { encoding: 'utf8' }).toLowerCase();
             // ... inside your 'for (const file of stagedFiles)' loop ...
             for (const rule of RULES) {
                 // We reset the regex state for each file
                 const testRegex = new RegExp(rule.regex);
                 if (testRegex.test(fileContent)) {
-                    console.log(chalk_1.default.red(`❌ Security Risk in ${chalk_1.default.yellow(file)}: ${rule.name} detected!`));
+                    console.log(chalk.red(`❌ Security Risk in ${chalk.yellow(file)}: ${rule.name} detected!`));
                     issuesFound++;
                     break;
                 }
             }
         }
         if (issuesFound > 0) {
-            console.log(chalk_1.default.red(`\n🛡️  CleanPR blocked the push. Fix these ${issuesFound} issues!`));
+            console.log(chalk.red(`\n🛡️  CleanPR blocked the push. Fix these ${issuesFound} issues!`));
             return false;
         }
-        console.log(chalk_1.default.green('✅ CleanPR: No secrets detected.'));
+        console.log(chalk.green('✅ CleanPR: No secrets detected.'));
         return true;
     }
     catch (error) {

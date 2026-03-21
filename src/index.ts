@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { runAudit } from './audit/scanner';
-import { generateCommitMessage } from './utils/ai';
-import { runSetup } from './engine/setup';
-import * as git from './engine/git-wrapper'; // We will build this next!
+// 🛑 Change these:
+import { runAudit } from './audit/scanner.js';
+import { generateCommitMessage } from './utils/ai.js';
+import { runSetup } from './engine/setup.js';
+import * as git from './engine/git-wrapper.js';
 
 const program = new Command();
 
