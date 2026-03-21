@@ -9,7 +9,7 @@ import { runSetup } from './engine/setup.js';
 import * as git from './engine/git-wrapper.js';
 const program = new Command();
 program
-    .name('devgit')
+    .name('swigit')
     .description('The all-in-one Smart Git CLI with CleanPR protection')
     .version('1.0.0');
 // ==========================================
