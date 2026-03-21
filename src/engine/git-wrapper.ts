@@ -20,14 +20,36 @@ export async function superInit(url: string) {
     } catch (e) { console.error(chalk.red('❌ Failed to init.')); }
 }
 
+
 export async function syncRepo() {
-    console.log(chalk.blue('🔄 Syncing with remote...'));
+    console.log(chalk.blue('🔄 Preparing to sync (Autostashing local changes)...'));
     try {
-        run('git fetch --all');
-        run('git pull --rebase');
-        run('git status');
-        console.log(chalk.green('✅ Repo is up to date!'));
-    } catch (e) { console.error(chalk.red('❌ Conflict detected during sync.')); }
+        // 1. Temporarily hide your changes
+        execSync('git stash', { stdio: 'inherit' });
+
+        // 2. Pull the latest from GitHub
+        console.log(chalk.blue('📥 Pulling latest changes from remote...'));
+        execSync('git pull --rebase origin main', { stdio: 'inherit' });
+
+        // 3. Bring your changes back
+        console.log(chalk.blue('📤 Restoring your local changes...'));
+        execSync('git stash pop', { stdio: 'inherit' });
+
+        console.log(chalk.green('✅ Sync complete! You are now up to date.'));
+    } catch (error) {
+        console.log(chalk.yellow('⚠️  Sync finished, but you may need to check your files (or stash was empty).'));
+    }
+}
+
+export async function oneCommandShip(message: string) {
+    try {
+        // We don't need 'git add' here because the scanner already did it!
+        execSync(`git commit -m "${message}"`, { stdio: 'inherit' });
+        execSync('git push origin main', { stdio: 'inherit' });
+        console.log(chalk.green(`\n🚀 Shipped "${message}" to main!`));
+    } catch (error) {
+        console.log(chalk.red('\n❌ Shipping failed. Check git status.'));
+    }
 }
 
 export async function createBranch(name: string) {
@@ -77,15 +99,7 @@ export async function repoInfo() {
     } catch (e) { console.error(chalk.red('❌ Could not fetch repo info.')); }
 }
 
-export async function oneCommandShip(message: string) {
-    try {
-        run('git add .');
-        run(`git commit -m "${message}"`);
-        const branch = runSilent('git branch --show-current');
-        run(`git push origin ${branch}`);
-        console.log(chalk.green(`\n🚀 Shipped "${message}" to ${branch}!`));
-    } catch (e) { console.error(chalk.red('\n❌ Shipping failed. Check git status.')); }
-}
+
 
 export async function mergeAndPush(targetBranch: string) {
     console.log(chalk.blue(`🔀 Merging '${targetBranch}' into current branch...`));

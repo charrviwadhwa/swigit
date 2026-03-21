@@ -38,12 +38,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.superInit = superInit;
 exports.syncRepo = syncRepo;
+exports.oneCommandShip = oneCommandShip;
 exports.createBranch = createBranch;
 exports.smartSwitch = smartSwitch;
 exports.undoLastCommit = undoLastCommit;
 exports.wipeChanges = wipeChanges;
 exports.repoInfo = repoInfo;
-exports.oneCommandShip = oneCommandShip;
 exports.mergeAndPush = mergeAndPush;
 exports.smartClone = smartClone;
 const child_process_1 = require("child_process");
@@ -69,15 +69,31 @@ async function superInit(url) {
     }
 }
 async function syncRepo() {
-    console.log(chalk_1.default.blue('🔄 Syncing with remote...'));
+    console.log(chalk_1.default.blue('🔄 Preparing to sync (Autostashing local changes)...'));
     try {
-        run('git fetch --all');
-        run('git pull --rebase');
-        run('git status');
-        console.log(chalk_1.default.green('✅ Repo is up to date!'));
+        // 1. Temporarily hide your changes
+        (0, child_process_1.execSync)('git stash', { stdio: 'inherit' });
+        // 2. Pull the latest from GitHub
+        console.log(chalk_1.default.blue('📥 Pulling latest changes from remote...'));
+        (0, child_process_1.execSync)('git pull --rebase origin main', { stdio: 'inherit' });
+        // 3. Bring your changes back
+        console.log(chalk_1.default.blue('📤 Restoring your local changes...'));
+        (0, child_process_1.execSync)('git stash pop', { stdio: 'inherit' });
+        console.log(chalk_1.default.green('✅ Sync complete! You are now up to date.'));
     }
-    catch (e) {
-        console.error(chalk_1.default.red('❌ Conflict detected during sync.'));
+    catch (error) {
+        console.log(chalk_1.default.yellow('⚠️  Sync finished, but you may need to check your files (or stash was empty).'));
+    }
+}
+async function oneCommandShip(message) {
+    try {
+        // We don't need 'git add' here because the scanner already did it!
+        (0, child_process_1.execSync)(`git commit -m "${message}"`, { stdio: 'inherit' });
+        (0, child_process_1.execSync)('git push origin main', { stdio: 'inherit' });
+        console.log(chalk_1.default.green(`\n🚀 Shipped "${message}" to main!`));
+    }
+    catch (error) {
+        console.log(chalk_1.default.red('\n❌ Shipping failed. Check git status.'));
     }
 }
 async function createBranch(name) {
@@ -138,18 +154,6 @@ async function repoInfo() {
     }
     catch (e) {
         console.error(chalk_1.default.red('❌ Could not fetch repo info.'));
-    }
-}
-async function oneCommandShip(message) {
-    try {
-        run('git add .');
-        run(`git commit -m "${message}"`);
-        const branch = runSilent('git branch --show-current');
-        run(`git push origin ${branch}`);
-        console.log(chalk_1.default.green(`\n🚀 Shipped "${message}" to ${branch}!`));
-    }
-    catch (e) {
-        console.error(chalk_1.default.red('\n❌ Shipping failed. Check git status.'));
     }
 }
 async function mergeAndPush(targetBranch) {
