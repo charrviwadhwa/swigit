@@ -150,7 +150,8 @@ program
         const isClean = await (0, scanner_1.runAudit)();
         if (!isClean) {
             console.log(chalk_1.default.red("❌ Audit failed. Use --force to bypass if absolutely necessary."));
-            process.exit(1);
+            process.exitCode = 1;
+            return;
         }
     }
     await git.oneCommandShip(finalMessage);

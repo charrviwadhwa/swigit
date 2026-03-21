@@ -39,6 +39,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.runSetup = runSetup;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
+const os = __importStar(require("os"));
 const readline_1 = __importDefault(require("readline"));
 const chalk_1 = __importDefault(require("chalk"));
 const rl = readline_1.default.createInterface({
@@ -46,33 +47,40 @@ const rl = readline_1.default.createInterface({
     output: process.stdout
 });
 async function runSetup() {
-    console.log(chalk_1.default.magenta.bold('\n🛠️  DevGit Setup: Let\'s get you connected to Gemini AI.'));
-    rl.question('🔑 Enter your Gemini API Key: ', (apiKey) => {
-        if (!apiKey) {
-            console.log(chalk_1.default.red('❌ API Key is required to use AI features.'));
+    console.log(chalk_1.default.magenta.bold('\n🛠️  DevGit AI Setup'));
+    // 1. Ask for the Provider Preference
+    rl.question('Which AI provider do you want to use? (gemini / openai): ', (providerInput) => {
+        const provider = providerInput.trim().toLowerCase();
+        if (provider !== 'gemini' && provider !== 'openai') {
+            console.log(chalk_1.default.red('❌ Unsupported provider. Please choose "gemini" or "openai".'));
             rl.close();
             return;
         }
-        const envContent = `GEMINI_API_KEY=${apiKey}\n`;
-        const envPath = path.join(process.cwd(), '.env');
-        try {
-            fs.writeFileSync(envPath, envContent);
-            // Also ensure .env is in .gitignore so they don't leak it!
-            const gitignorePath = path.join(process.cwd(), '.gitignore');
-            if (fs.existsSync(gitignorePath)) {
-                const gitignoreContent = fs.readFileSync(gitignorePath, 'utf8');
-                if (!gitignoreContent.includes('.env')) {
-                    fs.appendFileSync(gitignorePath, '\n.env\n');
+        // 2. Ask for the specific key for that provider
+        rl.question(`🔑 Enter your ${provider.toUpperCase()} API Key: `, (apiKey) => {
+            if (!apiKey) {
+                console.log(chalk_1.default.red('❌ API Key is required.'));
+                rl.close();
+                return;
+            }
+            // 3. Define the Global "Safe" path (e.g., C:\Users\Charvi\.devgit\.env)
+            const configDir = path.join(os.homedir(), '.devgit');
+            const envPath = path.join(configDir, '.env');
+            try {
+                // Create the hidden folder if it doesn't exist yet
+                if (!fs.existsSync(configDir)) {
+                    fs.mkdirSync(configDir);
                 }
+                // Save BOTH the provider preference and the key
+                const envContent = `AI_PROVIDER=${provider}\n${provider.toUpperCase()}_API_KEY=${apiKey}\n`;
+                fs.writeFileSync(envPath, envContent);
+                console.log(chalk_1.default.green(`\n✅ Setup complete! DevGit is now powered by ${provider.toUpperCase()}.`));
+                console.log(chalk_1.default.gray(`🔒 Config saved securely at: ${envPath}`));
             }
-            else {
-                fs.writeFileSync(gitignorePath, '.env\n');
+            catch (error) {
+                console.error(chalk_1.default.red('❌ Failed to save setup configuration.'));
             }
-            console.log(chalk_1.default.green('\n✅ Setup complete! Your API key is saved in .env and protected by .gitignore.'));
-        }
-        catch (error) {
-            console.error(chalk_1.default.red('❌ Failed to save setup configuration.'));
-        }
-        rl.close();
+            rl.close();
+        });
     });
 }

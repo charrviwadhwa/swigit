@@ -1,50 +1,78 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import * as dotenv from 'dotenv';
+import * as path from 'path';
+import * as os from 'os';
 import { simpleGit } from 'simple-git';
 import chalk from 'chalk';
 
-// Load the .env file if it exists
-dotenv.config();
+// 1. Tell dotenv EXACTLY where the global safe is
+const globalEnvPath = path.join(os.homedir(), '.devgit', '.env');
+dotenv.config({ path: globalEnvPath });
 
 const git = simpleGit();
 
 export async function generateCommitMessage(): Promise<string> {
-  // 1. We moved the check INSIDE the function!
-  const apiKey = process.env.GEMINI_API_KEY;
+  // 2. Read the preferred provider (defaults to gemini if not found)
+  const provider = process.env.AI_PROVIDER || 'gemini';
 
-  if (!apiKey) {
-    console.error(chalk.red("\n❌ Error: GEMINI_API_KEY not found."));
-    console.log(chalk.yellow("👉 Please run 'devgit setup' to configure your API key.\n"));
+  // 3. Grab the staged code changes
+  const diff = await git.diff(['--cached']);
+  if (!diff) {
+    console.log(chalk.red("❌ No staged changes found to analyze."));
     process.exit(1);
   }
 
-  // 2. Initialize the AI only when we know we have the key
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const prompt = `Write a professional, concise, 1-line Conventional Commit message based on this git diff:\n${diff.substring(0, 3000)}`;
 
   try {
-    const diff = await git.diff(['--cached']);
-    
-    if (!diff) {
-      console.log(chalk.red("❌ No staged changes found to analyze."));
-      process.exit(1);
+    console.log(chalk.gray(`🤖 Routing AI request to ${provider.toUpperCase()}...`));
+
+    // ==========================================
+    // ROUTE 1: GEMINI
+    // ==========================================
+    if (provider === 'gemini') {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) throw new Error("GEMINI_API_KEY not found. Run 'devgit setup'");
+      
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      return response.text().trim().replace(/`/g, "");
     }
 
-    const prompt = `
-      Analyze the following git diff and write a concise, professional commit message.
-      Use the Conventional Commits format (e.g., feat:, fix:, chore:, docs:, refactor:).
-      The message should be a single line under 60 characters.
+    // ==========================================
+    // ROUTE 2: OPENAI
+    // ==========================================
+    else if (provider === 'openai') {
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) throw new Error("OPENAI_API_KEY not found. Run 'devgit setup'");
       
-      Diff:
-      ${diff.substring(0, 5000)} 
-    `;
+      // We use a dynamic require here so the app doesn't crash if a user 
+      // only wants Gemini and hasn't installed the openai package.
+      const { OpenAI } = require("openai"); 
+      const openai = new OpenAI({ apiKey });
+      
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+      });
+      return response.choices[0].message.content.trim().replace(/`/g, "");
+    }
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text().trim().replace(/`/g, "");
+    // Fallback if the user typed something weird in the .env file
+    else {
+      throw new Error(`Unsupported AI Provider: ${provider}`);
+    }
 
-  } catch (error) {
-    console.error(chalk.red("🤖 AI Error: Could not generate message."));
-    return "update: structural changes";
+  } catch (error: any) {
+    console.error(chalk.red(`\n🤖 AI Error: ${error.message}`));
+    
+    // Helpful hint if they chose OpenAI but forgot to install the package
+    if (error.message.includes("Cannot find module 'openai'")) {
+        console.log(chalk.yellow("👉 Hint: Run 'npm install openai' in your DevGit folder to enable the OpenAI integration."));
+    }
+    
+    return "update: structural changes"; // Safe fallback so DevGit doesn't crash
   }
 }

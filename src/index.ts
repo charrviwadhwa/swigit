@@ -136,7 +136,8 @@ program
       const isClean = await runAudit();
       if (!isClean) {
         console.log(chalk.red("❌ Audit failed. Use --force to bypass if absolutely necessary."));
-        process.exit(1);
+        process.exitCode =1;
+        return;
       }
     }
 
