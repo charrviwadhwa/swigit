@@ -1,5 +1,5 @@
 {
-  "name": "@charviwadhwa06/devgit",
+  "name": "devgit",
   "version": "1.0.0",
   "description": "AI-powered Git assistant with Gemini and Security Audit",
   "type": "module",
