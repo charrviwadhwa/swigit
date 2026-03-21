@@ -1,9 +1,9 @@
 {
-  "name": "devgit",
+  "name": "@charviwadhwa06/devgit",
   "version": "1.0.0",
-  "description": "AI-powered Git assistant with Gemini and CleanPR security auditing.",
-  "main": "./dist/index.js",
+  "description": "AI-powered Git assistant with Gemini and Security Audit",
   "type": "module",
+  "main": "./dist/index.js",
   "bin": {
     "devgit": "./dist/index.js"
   },
@@ -13,16 +13,8 @@
   ],
   "scripts": {
     "build": "tsc",
-    "prepare": "npm run build",
     "start": "node ./dist/index.js"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/charrviwadhwa/devgit.git"
-  },
-  "keywords": ["git", "ai", "gemini", "security", "cli", "automation"],
-  "author": "Charvi Wadhwa",
-  "license": "MIT",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "chalk": "^5.6.2",
@@ -32,7 +24,6 @@
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
-    "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
 }
