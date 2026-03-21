@@ -5,8 +5,7 @@
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
-    "swigit": "./dist/index.js",
-    "devgit": "./dist/index.js"
+    "swigit": "./dist/index.js"
   },
   "files": [
     "dist/",
