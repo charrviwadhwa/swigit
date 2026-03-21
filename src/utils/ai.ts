@@ -3,25 +3,26 @@ import * as dotenv from 'dotenv';
 import { simpleGit } from 'simple-git';
 import chalk from 'chalk';
 
-// Load the .env file
+// Load the .env file if it exists
 dotenv.config();
 
 const git = simpleGit();
 
-// Pull the key from process.env
-const apiKey = process.env.GEMINI_API_KEY;
-
-if (!apiKey) {
-  console.error(chalk.red("❌ Error: GEMINI_API_KEY not found in .env file."));
-  process.exit(1);
-}
-
-const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
 export async function generateCommitMessage(): Promise<string> {
+  // 1. We moved the check INSIDE the function!
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    console.error(chalk.red("\n❌ Error: GEMINI_API_KEY not found."));
+    console.log(chalk.yellow("👉 Please run 'devgit setup' to configure your API key.\n"));
+    process.exit(1);
+  }
+
+  // 2. Initialize the AI only when we know we have the key
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
   try {
-    // 1. Get the staged diff
     const diff = await git.diff(['--cached']);
     
     if (!diff) {
@@ -29,7 +30,6 @@ export async function generateCommitMessage(): Promise<string> {
       process.exit(1);
     }
 
-    // 2. Build the Prompt
     const prompt = `
       Analyze the following git diff and write a concise, professional commit message.
       Use the Conventional Commits format (e.g., feat:, fix:, chore:, docs:, refactor:).
@@ -39,13 +39,12 @@ export async function generateCommitMessage(): Promise<string> {
       ${diff.substring(0, 5000)} 
     `;
 
-    // 3. Generate Content
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    return response.text().trim().replace(/`/g, ""); // Clean up any markdown backticks
+    return response.text().trim().replace(/`/g, "");
 
   } catch (error) {
-    console.error(chalk.red("🤖 AI Error: Could not generate message. Falling back to default."));
+    console.error(chalk.red("🤖 AI Error: Could not generate message."));
     return "update: structural changes";
   }
 }
