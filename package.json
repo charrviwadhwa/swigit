@@ -1,10 +1,11 @@
 {
-  "name": "devgit",
+  "name": "swigit",
   "version": "1.0.0",
   "description": "AI-powered Git assistant with Gemini and Security Audit",
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
+    "swigit": "./dist/index.js",
     "devgit": "./dist/index.js"
   },
   "files": [
