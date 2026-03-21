@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { execSync } from 'child_process';
 import { Command } from 'commander';
 import chalk from 'chalk';
 // 🛑 Change these:
@@ -101,7 +102,6 @@ program
         return;
     }
     // 👉 THE FIX: Stage the files immediately so AI and CleanPR can read them!
-    const { execSync } = require('child_process');
     console.log(chalk.blue('📦 Staging files for analysis...'));
     execSync('git add .');
     let finalMessage = message;
