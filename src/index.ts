@@ -142,6 +142,10 @@ program
     }
 
     await git.oneCommandShip(finalMessage);
+    console.log(chalk.green('✨ Mission Accomplished.'));
+
+// 🚀 Add this line to kill the process immediately after success
+process.exit(0);
   });
 
 program.parse(process.argv);
