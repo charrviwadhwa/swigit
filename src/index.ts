@@ -1,8 +1,10 @@
+#!/usr/bin/env node
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { runAudit } from './audit/scanner';
-import { shipIt } from './engine/git-wrapper';
-// We will import our logic here next
+import { generateCommitMessage } from './utils/ai';
+import { runSetup } from './engine/setup';
+import * as git from './engine/git-wrapper'; // We will build this next!
 
 const program = new Command();
 
@@ -11,25 +13,129 @@ program
   .description('The all-in-one Smart Git CLI with CleanPR protection')
   .version('1.0.0');
 
-// The "Smart Ship" Command
+// ==========================================
+// 1. PROJECT LIFECYCLES
+// ==========================================
+
 program
-  .argument('<message>', 'Commit message')
-  .action(async (message) => {
-    console.log(chalk.blue(`🚀 DevGit: Starting the "Ship" workflow...`));
-    // 1. Run CleanPR Audit
-    // 2. If Clean, Run DevGit Push
+  .command('init <url>')
+  .description('Initialize repo, commit, and link to remote')
+  .action(async (url) => {
+    await git.superInit(url);
+  });
 
-// ... inside the .action() block of your commander program:
-    // 1. Audit first
-    const isClean = await runAudit();
+program
+  .command('sync')
+  .description('Fetch and pull with rebase to prevent merge commits')
+  .action(async () => {
+    await git.syncRepo();
+  });
+
+program
+  .command('clone <url>')
+  .description('Clone a repo and auto-install dependencies')
+  .action(async (url) => {
+    await git.smartClone(url);
+  });
+
+// ==========================================
+// 2. QUALITY CONTROL (CleanPR)
+// ==========================================
+
+program
+  .command('audit')
+  .description('Run CleanPR scan on staged files without pushing')
+  .action(async () => {
+    await runAudit();
+  });
+
+// ==========================================
+// 3. BRANCHING & CONTEXT SWITCHING
+// ==========================================
+
+program
+  .command('branch <name>')
+  .description('Create a new branch and push it to remote')
+  .action(async (name) => {
+    await git.createBranch(name);
+  });
+
+program
+  .command('switch <name>')
+  .description('Auto-stash changes and switch branches')
+  .action(async (name) => {
+    await git.smartSwitch(name);
+  });
+
+program
+  .command('merge <name>')
+  .description('Merge a branch into current and push')
+  .action(async (name) => {
+    await git.mergeAndPush(name);
+  });
+
+// ==========================================
+// 4. UTILITY & CLEANUP
+// ==========================================
+
+program
+  .command('undo')
+  .description('Undo the last commit but keep the code changes')
+  .action(async () => {
+    await git.undoLastCommit();
+  });
+
+program
+  .command('wipe')
+  .description('Panic button: delete all uncommitted changes')
+  .action(async () => {
+    await git.wipeChanges();
+  });
+
+program
+  .command('info')
+  .description('View repo dashboard (remote, branch, last commit)')
+  .action(async () => {
+    await git.repoInfo();
+  });
+
+program
+  .command('setup')
+  .description('Configure Gemini AI keys for DevGit')
+  .action(async () => {
+    await runSetup();
+  });
+
+// ==========================================
+// 5. THE DAILY "SHIPPING" WORKFLOW (Default)
+// ==========================================
+
+program
+  .argument('[message]', 'Commit message (AI will generate if left blank)')
+  .option('-f, --force', 'Bypass CleanPR security audit')
+  .action(async (message, options) => {
     
-    // 2. Only ship if clean
-    if (isClean) {
-        await shipIt(message);
-    } else {
-        process.exit(1);
+    // Ignore if a known command was passed as an argument by mistake
+    if (['init', 'sync', 'clone', 'audit', 'branch', 'switch', 'merge', 'undo', 'wipe', 'info', 'setup'].includes(message)) {
+        return;
     }
-});
 
+    let finalMessage = message;
+
+    if (!finalMessage) {
+      finalMessage = await generateCommitMessage();
+      console.log(chalk.cyan(`🤖 AI Suggestion: "${finalMessage}"`));
+    }
+
+    if (!options.force) {
+      const isClean = await runAudit();
+      if (!isClean) {
+        console.log(chalk.red("❌ Audit failed. Use --force to bypass if absolutely necessary."));
+        process.exit(1);
+      }
+    }
+
+    await git.oneCommandShip(finalMessage);
+  });
 
 program.parse(process.argv);
