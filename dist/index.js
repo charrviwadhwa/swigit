@@ -155,5 +155,8 @@ program
         }
     }
     await git.oneCommandShip(finalMessage);
+    console.log(chalk_1.default.green('✨ Mission Accomplished.'));
+    // 🚀 Add this line to kill the process immediately after success
+    process.exit(0);
 });
 program.parse(process.argv);
