@@ -131,11 +131,11 @@ program
     // 5. Shipping
     try {
         await git.oneCommandShip(finalMessage);
-        // We don't need "Mission Accomplished" at the bottom because 
-        // oneCommandShip already prints a success message.
+        process.exit(0);
     }
     catch (error) {
-        // Error is already handled inside oneCommandShip's catch block
+        console.log(chalk.red('\n❌ An unexpected error occurred.'));
+        process.exit(1);
     }
 });
 program.parse(process.argv);
