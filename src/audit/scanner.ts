@@ -1,51 +1,23 @@
 import { execSync } from 'child_process';
 import chalk from 'chalk';
+import fs from 'fs';
+import path from 'path';
 
-// 🛡️ Ignore list for Swigit's own development
-const IGNORE_LIST = [
-    'src/audit/scanner.ts',
-    'src/engine/setup.ts',
-    'src/index.ts',
-    'dist/',
-    'node_modules'
-];
+// 🛡️ Internal files and common non-code files to skip
+const IGNORE_LIST = ['src/audit/scanner.ts', 'dist/', 'node_modules', '.git/'];
+const SAFE_FILES = ['.gitignore', 'package.json', 'package-lock.json', 'README.md', 'LICENSE'];
 
-// 🌟 NEW: Universally safe files that shouldn't be scanned for secrets
-const SAFE_FILES = [
-    '.gitignore',
-    'package.json',
-    'package-lock.json',
-    'yarn.lock',
-    'pnpm-lock.yaml',
-    'README.md',
-    'LICENSE'
-];
-
-// 🚨 SMART RULES: Only block if it looks like a variable assignment to a string
 const RULES = [
     { 
-        name: 'Generic Hardcoded Secret', 
-        regex: /(password|pass|api_key|secret|token|auth|key)\s*[:=]\s*['"`][a-zA-Z0-9\-_]{8,}['"`]/gi 
+        name: 'Hardcoded Secret', 
+        // 🌟 Matches the pattern of the key ALONE (no variable name needed)
+        // It now catches AKIA, sk_test, and ghp_ anywhere in the file.
+        regex: /(AKIA|ASIA)[0-9A-Z]{16}|sk_(live|test)_[0-9a-zA-Z]{24}|ghp_[a-zA-Z0-9]{36}/i 
     },
-    {
-        name: 'AWS Access Key',
-        // Signature: Starts with AKIA/ASIA, 20 chars total
-        regex: /(AKIA|ASIA)[0-9A-Z]{16}/gi 
-    },
-    {
-        name: 'Stripe API Key',
-        // Signature: Starts with sk_test_ or sk_live_
-        regex: /sk_(test|live)_[0-9a-zA-Z]{24}/gi 
-    },
-    {
-        name: 'GitHub Token',
-        // Signature: Starts with ghp_
-        regex: /ghp_[a-zA-Z0-9]{36}/gi 
-    },
-    {
-        name: 'Google/Firebase API Key',
-        // Signature: Starts with AIza, ~39 chars
-        regex: /AIza[0-9A-Za-z-_]{35}/gi 
+    { 
+        name: 'Assignment Secret', 
+        // 🌟 Matches: password = "...", key: '...', etc.
+        regex: /(password|pass|api_key|secret|token|key)\s*[:=]\s*['"`].*['"`]/i 
     }
 ];
 
@@ -53,57 +25,67 @@ export async function runAudit(): Promise<boolean> {
     console.log(chalk.blue('🔍 [CleanPR] Running Deep Security Scan...'));
 
     try {
-        // 1. Force stage
-        execSync('git add .');
-
-        // 2. Get staged files
+        // 1. Get staged files
         const stagedFiles = execSync('git diff --cached --name-only', { encoding: 'utf8' })
             .split('\n')
             .filter(Boolean);
 
+        // 🌟 DEBUG: See if Git actually sees your file
+        console.log(chalk.gray(`Found ${stagedFiles.length} staged files: ${stagedFiles.join(', ')}`));
+
+        if (stagedFiles.length === 0) {
+            console.log(chalk.yellow('⚠️ No files are staged. Run "git add ." first!'));
+            return true;
+        }
+
         let issuesFound = 0;
 
         for (const file of stagedFiles) {
-            // Check if it's an internal Swigit file
             if (IGNORE_LIST.some(ignored => file.includes(ignored))) continue;
-
-            // 👉 THE FIX: Skip safe config & doc files from content scanning
             if (SAFE_FILES.some(safe => file.endsWith(safe))) continue;
 
-            // 🌟 NEW: The Ultimate Environment Leak Check
-            // Checks the actual filename instead of the content!
-            if (file.endsWith('.env') || file.includes('.env.')) {
-                // Allow .env.example or .env.template, but block actual env files
-                if (!file.endsWith('.example') && !file.endsWith('.template')) {
-                    console.log(chalk.red(`❌ Security Risk: You are trying to commit a ${chalk.yellow(file)} file!`));
-                    issuesFound++;
-                    continue; // Move to the next file
-                }
-            }
+            const absolutePath = path.resolve(process.cwd(), file);
+            
+            if (fs.existsSync(absolutePath)) {
+    // 1. Read the raw buffer first
+    const buffer = fs.readFileSync(absolutePath);
+    
+    // 2. Convert to string and STRIP the UTF-16 BOM and null bytes
+    // Windows PowerShell 'echo' often adds null bytes between characters
+    let fileContent = buffer.toString('utf8').replace(/\0/g, '');
+    
+    // 3. Remove the BOM (the  symbols)
+    fileContent = fileContent.replace(/^\uFEFF/, '');
 
-            // 3. Get the content for the remaining files
-            const fileContent = execSync(`git show :0:"${file}"`, { encoding: 'utf8' }).toLowerCase();
+    // 🌟 DEBUG: This should now look like clean text
+    // console.log("CLEAN CONTENT:", fileContent);
 
-            for (const rule of RULES) {
-                // We reset the regex state for each file
-                const testRegex = new RegExp(rule.regex);
-                if (testRegex.test(fileContent)) {
-                    console.log(chalk.red(`❌ Security Risk in ${chalk.yellow(file)}: ${rule.name} detected!`));
-                    issuesFound++;
-                    break; 
-                }
+    for (const rule of RULES) {
+        const detector = new RegExp(rule.regex.source, 'gi'); 
+        if (detector.test(fileContent)) {
+            console.log(chalk.red(`❌ Security Risk in ${chalk.yellow(file)}: ${rule.name} detected!`));
+            issuesFound++;
+            break; 
+        }
+    }
+} else {
+                console.log(chalk.yellow(`⚠️ File not found on disk: ${file}`));
             }
+            
         }
 
         if (issuesFound > 0) {
-            console.log(chalk.red(`\n🛡️  CleanPR blocked the push. Fix these ${issuesFound} issues!`));
-            return false;
-        }
+    console.log(chalk.red(`\n🛡️  CleanPR blocked the push. Fix ${issuesFound} security issues!`));
+    console.log(chalk.cyan('💡 Recommendation: ') + chalk.white('Move these secrets to a .env file.'));
+    console.log(chalk.cyan('🚀 To bypass this once: ') + chalk.white.bold('swigit --force\n'));
+    return false;
+}
 
         console.log(chalk.green('✅ CleanPR: No secrets detected.'));
         return true;
 
     } catch (error) {
+        console.log(chalk.red('💥 Audit Error:'), error);
         return true; 
     }
 }

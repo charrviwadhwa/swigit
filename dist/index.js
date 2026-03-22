@@ -23,7 +23,7 @@ async function main() {
         console.log(chalk.cyan('👋 Welcome to Swigit! Let\'s get you set up first.'));
         await runSetup();
         // Reload env so the current command can use the new key
-        dotenv.config({ path: CONFIG_PATH, override: true });
+        dotenv.config({ path: CONFIG_PATH, override: true, quiet: true });
     }
     // 2. CLI CONFIGURATION
     program
