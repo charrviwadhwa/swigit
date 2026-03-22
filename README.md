@@ -1,82 +1,64 @@
-# 🚀 Swigit
+
+# Swigit
 
 [![npm version](https://img.shields.io/npm/v/@charviwadhwa06/swigit.svg?style=flat-square)](https://www.npmjs.com/package/@charviwadhwa06/swigit)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg?style=flat-square)](https://nodejs.org/)
 
-> ⚡ AI-powered Git CLI that writes commits, prevents leaks, and ships your code — all in one command.
+Swigit is a high-performance Command Line Interface (CLI) designed to modernize the standard Git workflow. By integrating Large Language Models (LLMs) and local security auditing, Swigit automates the generation of standardized commit messages, prevents accidental credential exposure, and streamlines remote synchronization.
 
 ---
 
-## ✨ Features
+## Core Architecture
 
-- 🤖 **AI Commit Engine**  
-  Uses Google Gemini (1.5 Flash) to analyze your `git diff` and generate clean, professional commit messages (Conventional Commits style).
+### 1. AI-Driven Documentation Engine
+Swigit leverages the Google Gemini 1.5 Flash API to perform deep semantic analysis of repository diffs. Unlike basic automated commit tools, Swigit understands the context of code changes to produce high-quality, "Conventional Commits" compliant messages.
 
-- 🛡️ **CleanPR Security Shield**  
-  Scans your staged files and blocks pushes if it detects:
-  - API keys  
-  - Secrets  
-  - `.env` files  
-  - Tokens or credentials  
+### 2. CleanPR Security Shield
+A proactive security layer that performs real-time entropy analysis and pattern matching on staged files. It identifies and intercepts:
+- Private keys (RSA, SSH, PGP)
+- Cloud provider credentials (AWS, GCP, Azure)
+- Database connection strings and environment variables
+- Authentication tokens (JWT, OAuth)
 
-- 🔄 **Smart Sync Workflow**  
-  Automatically performs:
-
-  ```bash
-  git stash
-  git pull --rebase
-  git stash pop
-  ```
-
-  So you never deal with messy merge conflicts.
-
-- 🌍 **Global Configuration**  
-  Set your Gemini API key once and use it across all repositories.
-
-- 📊 **Repo Dashboard**  
-  Get a quick overview of:
-  - Current branch  
-  - Remote status  
-  - Recent commits  
+### 3. Atomic Sync Workflow
+To maintain a clean project history, Swigit automates the rebase-pull pattern. It safely handles local work-in-progress (WIP) using a stash-pull-pop mechanism, ensuring that your local branch is always updated against the remote head before a push.
 
 ---
 
-## 📦 Installation
+## Installation and Requirements
 
-### Install globally
+### System Requirements
+- Node.js version 18.0.0 or higher
+- Git 2.0.0 or higher
+- Valid Google Gemini API Key
 
+### Global Installation
 ```bash
 npm install -g @charviwadhwa06/swigit
 ```
 
-### Run instantly (no install)
-
+### Direct Execution
 ```bash
 npx @charviwadhwa06/swigit
 ```
 
 ---
 
-## 🛠️ Quick Start
+## Technical Configuration
 
-### 1. Setup (One-time)
-
-Connect your Gemini API key:
-
+### Initial Setup
+Run the setup utility to authorize the CLI with your Gemini API credentials. This configuration is stored globally for use across all local repositories.
 ```bash
 swigit setup
 ```
 
----
-
-### 2. Ship your code 🚀
-
-Run one command to:
-- stage changes
-- generate commit message
-- scan for secrets
-- sync with remote
-- push safely
+### Main Execution Logic
+The primary `swigit` command executes a multi-stage pipeline:
+1. **Discovery:** Identifies modified and untracked files.
+2. **Staging:** Performs a recursive `git add .` to prepare the workspace.
+3. **Analysis:** Routes the current `diff` to the Gemini engine for message generation.
+4. **Audit:** Triggers the CleanPR scanner for secret detection.
+5. **Finalization:** Executes the commit and pushes to the current upstream branch.
 
 ```bash
 swigit
@@ -84,101 +66,39 @@ swigit
 
 ---
 
-### 3. View repo info
+## Command Reference
 
-```bash
-swigit info
-```
-
----
-
-### 4. Help command
-
-```bash
-swigit --help
-```
+| Command | Description |
+| :--- | :--- |
+| `swigit` | Default shipping workflow (Add, AI Commit, Audit, Push). |
+| `swigit init <url>` | Initializes a local repository and establishes a remote origin. |
+| `swigit sync` | Performs a stash-based rebase pull to stay current with remote. |
+| `swigit clone <url>` | Clones a repository and auto-installs Node.js dependencies. |
+| `swigit info` | Displays current branch status, remotes, and commit metadata. |
+| `swigit undo` | Reverts the most recent commit while preserving file changes. |
+| `swigit setup` | Manages global configuration and API credentials. |
 
 ---
 
-## 🧠 Why Swigit?
+## Workflow Comparison
 
-### ❌ Problem 1: Bad Commit Messages
-
-Most developers write:
-
-```bash
-fix
-update
-changes
-```
-
-👉 Swigit generates:
-
-```bash
-feat(auth): add JWT-based login with refresh tokens
-```
-
----
-
-### 🔐 Problem 2: Secret Leaks
-
-Thousands of API keys get pushed to GitHub daily.
-
-👉 Swigit prevents this by:
-- scanning staged files
-- blocking unsafe pushes
-- alerting you instantly
-
----
-
-### ⚡ Problem 3: Messy Git Workflow
-
-Manual workflow:
-
+### Standard Manual Workflow
+Manual workflows often lead to non-descriptive messages and increased risk of secret leakage.
 ```bash
 git add .
-git commit -m "..."
-git pull --rebase
-git push
+git commit -m "fix bug"
+git pull origin main
+# (Manual conflict resolution)
+git push origin main
 ```
 
-👉 Swigit replaces it with:
-
+### Swigit Automated Workflow
+Swigit ensures every commit is documented, secure, and synchronized.
 ```bash
 swigit
 ```
 
 ---
 
-## 🧪 Example Output
-
-```bash
-✔ Staged changes
-✔ Generated commit message:
-  "feat(api): add user authentication endpoint"
-
-✔ Security scan passed
-✔ Synced with remote
-✔ Pushed successfully 🚀
-```
-
----
-
-## ⚙️ Configuration
-
-After setup, your API key is stored securely and used globally.
-
-To reconfigure:
-
-```bash
-swigit setup
-```
-
----
-
-## 🛡️ Security
-
-Swigit’s **CleanPR Shield** ensures:
-- No sensitive data leaves your machine
-- Local scanning before push
-- Safe Git practices by default
+## Security Policy
+Swigit is built with a "Local First" security philosophy. The CleanPR Security Shield executes all scanning logic within the local environment. No source code or sensitive credentials are ever transmitted to external servers for the purpose of auditing.
