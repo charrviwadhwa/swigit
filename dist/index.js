@@ -97,20 +97,26 @@ program
     .argument('[message]', 'Commit message')
     .option('-f, --force', 'Bypass CleanPR security audit')
     .action(async (message, options) => {
-    // 1. Stage everything
+    // 1. Stage files SILENTLY (Hides the LF/CRLF warnings)
     console.log(chalk.blue('📦 Staging files for analysis...'));
-    execSync('git add .');
-    // 2. CHECK: Is there actually anything to commit?
-    // This command returns empty if there are no changes
-    const hasChanges = execSync('git status --short').toString().trim();
-    if (!hasChanges) {
+    try {
+        execSync('git add .', { stdio: 'ignore' }); // 'ignore' hides the warnings
+    }
+    catch (e) {
+        // If git add fails (e.g. not a git repo), catch it here
+        console.log(chalk.red("❌ Error: Not a git repository."));
+        return;
+    }
+    // 2. CHECK: Is the working tree actually clean?
+    const status = execSync('git status --short').toString().trim();
+    if (!status) {
         console.log(chalk.green('✨ Everything is already up to date. Nothing to ship!'));
-        process.exit(0); // Exit early and cleanly
+        return; // This stops the code BEFORE it tries to commit anything
     }
     let finalMessage = message;
-    // 3. AI Generation (if message is blank)
+    // 3. AI Generation
     if (!finalMessage) {
-        console.log(chalk.magenta('🧠 Analyzing changes with Gemini...'));
+        console.log(chalk.magenta('🧠 Consulting Gemini for the perfect message...'));
         finalMessage = await generateCommitMessage();
         console.log(chalk.cyan(`🤖 AI Suggestion: "${finalMessage}"`));
     }
@@ -118,19 +124,18 @@ program
     if (!options.force) {
         const isClean = await runAudit();
         if (!isClean) {
-            console.log(chalk.red("❌ Audit failed. Check your secrets!"));
+            console.log(chalk.red("❌ Audit failed. Check your files for secrets."));
             process.exit(1);
         }
     }
-    // 5. Final Push
+    // 5. Shipping
     try {
         await git.oneCommandShip(finalMessage);
-        console.log(chalk.green.bold('🚀 Successfully Shipped to Remote!'));
+        // We don't need "Mission Accomplished" at the bottom because 
+        // oneCommandShip already prints a success message.
     }
-    catch (e) {
-        // This only hits if the NETWORK or PUSH fails
-        process.exit(1);
+    catch (error) {
+        // Error is already handled inside oneCommandShip's catch block
     }
-    process.exit(0);
 });
 program.parse(process.argv);
