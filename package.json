@@ -1,6 +1,6 @@
 {
   "name": "@charviwadhwa06/swigit",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "type": "module",
   "description": "AI-powered Git CLI with CleanPR protection: automate commits, prevent leaks, and ship code in one command.",
   "main": "dist/index.js",
@@ -19,8 +19,6 @@
   ],
   "author": "Charvi Wadhwa",
   "license": "MIT",
-  
-
   "repository": {
     "type": "git",
     "url": "git+https://github.com/charrviwadhwa/swigit.git"
@@ -29,11 +27,9 @@
     "url": "https://github.com/charrviwadhwa/swigit/issues"
   },
   "homepage": "https://github.com/charrviwadhwa/swigit#readme",
-  
   "publishConfig": {
     "access": "public"
   },
-
   "scripts": {
     "build": "tsc",
     "start": "node ./dist/index.js"
