@@ -163,3 +163,17 @@ export async function smartClone(url) {
         console.error(chalk.red(`❌ Failed to smart clone: ${e.message}`));
     }
 }
+export async function ensureStaged() {
+    const status = runSilent('git status --short');
+    // If there is literally nothing changed (staged or unstaged)
+    if (!status) {
+        return false;
+    }
+    const staged = runSilent('git diff --cached --name-only');
+    // If there are changes, but none are staged
+    if (!staged) {
+        console.log(chalk.yellow('📦 No staged changes found. Auto-staging all files...'));
+        run('git add .');
+    }
+    return true;
+}

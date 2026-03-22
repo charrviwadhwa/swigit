@@ -117,36 +117,38 @@ program
   .option('-f, --force', 'Bypass CleanPR security audit')
   .action(async (message, options) => {
     
-    // Ignore if a known command was passed as an argument by mistake
-    if (['init', 'sync', 'clone', 'audit', 'branch', 'switch', 'merge', 'undo', 'wipe', 'info', 'setup'].includes(message)) {
-        return;
-    }
-
-    // 👉 THE FIX: Stage the files immediately so AI and CleanPR can read them!
-
+    // 1. Stage everything first
     console.log(chalk.blue('📦 Staging files for analysis...'));
     execSync('git add .');
 
+    // 2. CHECK IF THERE IS ACTUALLY ANYTHING NEW
+    const hasChanges = execSync('git status --short').toString().trim();
+    if (!hasChanges) {
+        console.log(chalk.yellow('✨ Everything is already up to date. Nothing to ship!'));
+        return;
+    }
+
     let finalMessage = message;
 
+    // 3. AI Generation
     if (!finalMessage) {
+      console.log(chalk.magenta('🧠 Thinking... (Consulting Gemini)'));
       finalMessage = await generateCommitMessage();
       console.log(chalk.cyan(`🤖 AI Suggestion: "${finalMessage}"`));
     }
 
+    // 4. CleanPR Audit
     if (!options.force) {
       const isClean = await runAudit();
       if (!isClean) {
         console.log(chalk.red("❌ Audit failed. Use --force to bypass if absolutely necessary."));
-        process.exitCode =1;
+        process.exit(1); 
         return;
       }
     }
 
+    // 5. Final Push
     await git.oneCommandShip(finalMessage);
-    console.log(chalk.green('✨ Mission Accomplished.'));
-
-process.exit(0);
+    process.exit(0);
   });
-
 program.parse(process.argv);
