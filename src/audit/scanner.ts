@@ -24,11 +24,29 @@ const SAFE_FILES = [
 // 🚨 SMART RULES: Only block if it looks like a variable assignment to a string
 const RULES = [
     { 
-        name: 'Hardcoded Secret', 
-        // Checks for: key = "value" or password: 'value'
-        regex: /(password|pass|api_key|secret|token)\s*[:=]\s*['"`].*['"`]/gi 
+        name: 'Generic Hardcoded Secret', 
+        regex: /(password|pass|api_key|secret|token|auth|key)\s*[:=]\s*['"`][a-zA-Z0-9\-_]{8,}['"`]/gi 
+    },
+    {
+        name: 'AWS Access Key',
+        // Signature: Starts with AKIA/ASIA, 20 chars total
+        regex: /(AKIA|ASIA)[0-9A-Z]{16}/gi 
+    },
+    {
+        name: 'Stripe API Key',
+        // Signature: Starts with sk_test_ or sk_live_
+        regex: /sk_(test|live)_[0-9a-zA-Z]{24}/gi 
+    },
+    {
+        name: 'GitHub Token',
+        // Signature: Starts with ghp_
+        regex: /ghp_[a-zA-Z0-9]{36}/gi 
+    },
+    {
+        name: 'Google/Firebase API Key',
+        // Signature: Starts with AIza, ~39 chars
+        regex: /AIza[0-9A-Za-z-_]{35}/gi 
     }
-    // We removed the old Environment Leak regex because it was too broad!
 ];
 
 export async function runAudit(): Promise<boolean> {
