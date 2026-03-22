@@ -1,6 +1,6 @@
 import { execSync } from 'child_process';
 import chalk from 'chalk';
-// 🛡️ Only ignore the actual DevGit source files, nothing else!
+// 🛡️ Ignore list for Swigit's own development
 const IGNORE_LIST = [
     'src/audit/scanner.ts',
     'src/engine/setup.ts',
@@ -8,18 +8,24 @@ const IGNORE_LIST = [
     'dist/',
     'node_modules'
 ];
-// 🚨 Broader search terms
+// 🌟 NEW: Universally safe files that shouldn't be scanned for secrets
+const SAFE_FILES = [
+    '.gitignore',
+    'package.json',
+    'package-lock.json',
+    'yarn.lock',
+    'pnpm-lock.yaml',
+    'README.md',
+    'LICENSE'
+];
 // 🚨 SMART RULES: Only block if it looks like a variable assignment to a string
 const RULES = [
     {
         name: 'Hardcoded Secret',
         // Checks for: key = "value" or password: 'value'
         regex: /(password|pass|api_key|secret|token)\s*[:=]\s*['"`].*['"`]/gi
-    },
-    {
-        name: 'Environment Leak',
-        regex: /\.env/gi
     }
+    // We removed the old Environment Leak regex because it was too broad!
 ];
 export async function runAudit() {
     console.log(chalk.blue('🔍 [CleanPR] Running Deep Security Scan...'));
@@ -32,12 +38,24 @@ export async function runAudit() {
             .filter(Boolean);
         let issuesFound = 0;
         for (const file of stagedFiles) {
-            // Check for exact file matches in ignore list
+            // Check if it's an internal Swigit file
             if (IGNORE_LIST.some(ignored => file.includes(ignored)))
                 continue;
-            // 3. Get the content
+            // 👉 THE FIX: Skip safe config & doc files from content scanning
+            if (SAFE_FILES.some(safe => file.endsWith(safe)))
+                continue;
+            // 🌟 NEW: The Ultimate Environment Leak Check
+            // Checks the actual filename instead of the content!
+            if (file.endsWith('.env') || file.includes('.env.')) {
+                // Allow .env.example or .env.template, but block actual env files
+                if (!file.endsWith('.example') && !file.endsWith('.template')) {
+                    console.log(chalk.red(`❌ Security Risk: You are trying to commit a ${chalk.yellow(file)} file!`));
+                    issuesFound++;
+                    continue; // Move to the next file
+                }
+            }
+            // 3. Get the content for the remaining files
             const fileContent = execSync(`git show :0:"${file}"`, { encoding: 'utf8' }).toLowerCase();
-            // ... inside your 'for (const file of stagedFiles)' loop ...
             for (const rule of RULES) {
                 // We reset the regex state for each file
                 const testRegex = new RegExp(rule.regex);
