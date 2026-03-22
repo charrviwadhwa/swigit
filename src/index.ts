@@ -113,26 +113,28 @@ program
 // ==========================================
 
 program
-  .argument('[message]', 'Commit message (AI will generate if left blank)')
+  .argument('[message]', 'Commit message')
   .option('-f, --force', 'Bypass CleanPR security audit')
   .action(async (message, options) => {
     
-    // 1. Stage everything first
+    // 1. Stage everything
     console.log(chalk.blue('📦 Staging files for analysis...'));
     execSync('git add .');
 
-    // 2. CHECK IF THERE IS ACTUALLY ANYTHING NEW
+    // 2. CHECK: Is there actually anything to commit?
+    // This command returns empty if there are no changes
     const hasChanges = execSync('git status --short').toString().trim();
+    
     if (!hasChanges) {
-        console.log(chalk.yellow('✨ Everything is already up to date. Nothing to ship!'));
-        return;
+        console.log(chalk.green('✨ Everything is already up to date. Nothing to ship!'));
+        process.exit(0); // Exit early and cleanly
     }
 
     let finalMessage = message;
 
-    // 3. AI Generation
+    // 3. AI Generation (if message is blank)
     if (!finalMessage) {
-      console.log(chalk.magenta('🧠 Thinking... (Consulting Gemini)'));
+      console.log(chalk.magenta('🧠 Analyzing changes with Gemini...'));
       finalMessage = await generateCommitMessage();
       console.log(chalk.cyan(`🤖 AI Suggestion: "${finalMessage}"`));
     }
@@ -141,14 +143,20 @@ program
     if (!options.force) {
       const isClean = await runAudit();
       if (!isClean) {
-        console.log(chalk.red("❌ Audit failed. Use --force to bypass if absolutely necessary."));
-        process.exit(1); 
-        return;
+        console.log(chalk.red("❌ Audit failed. Check your secrets!"));
+        process.exit(1);
       }
     }
 
     // 5. Final Push
-    await git.oneCommandShip(finalMessage);
+    try {
+        await git.oneCommandShip(finalMessage);
+        console.log(chalk.green.bold('🚀 Successfully Shipped to Remote!'));
+    } catch (e) {
+        // This only hits if the NETWORK or PUSH fails
+        process.exit(1);
+    }
+    
     process.exit(0);
   });
 program.parse(process.argv);
