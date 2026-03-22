@@ -1,6 +1,6 @@
 {
   "name": "@charviwadhwa06/swigit",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "AI-powered Git assistant with Gemini and Security Audit",
   "type": "module",
   "main": "./dist/index.js",
@@ -10,7 +10,6 @@
   "files": [
     "dist/",
     "README.md"
-    
   ],
   "scripts": {
     "build": "tsc",
