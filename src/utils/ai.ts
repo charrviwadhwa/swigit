@@ -27,22 +27,49 @@ export async function generateCommitMessage(): Promise<string> {
   try {
     console.log(chalk.gray(`🤖 Routing AI request to ${provider.toUpperCase()}...`));
 
-    if (provider === 'gemini') {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) throw new Error("GEMINI_API_KEY not found. Run 'swigit setup'");
-      
-      const genAI = new GoogleGenerativeAI(apiKey);
+    // ==========================================
+// ROUTE 1: GEMINI (High-Stability Version)
+// ==========================================
+if (provider === 'gemini') {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error("GEMINI_API_KEY not found. Run 'swigit setup'");
+    
+    // Initialize with specific versioning in the client constructor
+    const genAI = new GoogleGenerativeAI(apiKey);
 
-      // 👉 THE FIX: Use gemini-1.5-flash and force the STABLE v1 API
-      const model = genAI.getGenerativeModel(
-        { model: "gemini-1.5-flash" }, 
-        { apiVersion: "v1" } 
-      );
-      
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      return response.text().trim().replace(/`/g, "").replace(/\n/g, "");
+    try {
+        // We use 'gemini-1.5-flash' which is the current production stable ID
+        // Passing 'v1' in the second argument is the key to bypassing v1beta
+        const model = genAI.getGenerativeModel(
+            { model: "gemini-1.5-flash" },
+            { apiVersion: "v1" } 
+        );
+
+        const result = await model.generateContent({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: {
+                maxOutputTokens: 100,
+                temperature: 0.4,
+            }
+        });
+
+        const response = result.response;
+        const text = response.text();
+        
+        return text.trim().replace(/`/g, "").replace(/\n/g, "");
+
+    } catch (error: any) {
+        // LOGGING: This helps us see the actual URL it tried to hit
+        if (error.message.includes("404")) {
+            console.error(chalk.yellow(`\n⚠️  Model 'gemini-1.5-flash' not found on v1. Attempting failover to 'gemini-pro'...`));
+            
+            const fallbackModel = genAI.getGenerativeModel({ model: "gemini-pro" });
+            const fallbackResult = await fallbackModel.generateContent(prompt);
+            return fallbackResult.response.text().trim().replace(/`/g, "");
+        }
+        throw error;
     }
+}
 
     else if (provider === 'openai') {
       const apiKey = process.env.OPENAI_API_KEY;
