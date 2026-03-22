@@ -30,7 +30,7 @@ export async function generateCommitMessage() {
                 throw new Error("GEMINI_API_KEY not found. Run 'swigit setup'");
             const genAI = new GoogleGenerativeAI(apiKey);
             // Updated to a current stable model
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
             const result = await model.generateContent(prompt);
             const response = result.response;
             return response.text().trim().replace(/`/g, "").replace(/\n/g, "");
