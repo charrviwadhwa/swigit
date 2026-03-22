@@ -1,16 +1,39 @@
 {
   "name": "@charviwadhwa06/swigit",
   "version": "1.0.5",
-  "description": "AI-powered Git assistant with Gemini and Security Audit",
   "type": "module",
-  "main": "./dist/index.js",
+  "description": "AI-powered Git CLI with CleanPR protection: automate commits, prevent leaks, and ship code in one command.",
+  "main": "dist/index.js",
   "bin": {
-    "swigit": "./dist/index.js"
+    "swigit": "dist/index.js"
   },
-  "files": [
-    "dist/",
-    "README.md"
+  "keywords": [
+    "git",
+    "cli",
+    "ai",
+    "gemini",
+    "automation",
+    "workflow",
+    "security",
+    "commit"
   ],
+  "author": "Charvi Wadhwa",
+  "license": "MIT",
+  
+
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/charrviwadhwa/swigit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/charrviwadhwa/swigit/issues"
+  },
+  "homepage": "https://github.com/charrviwadhwa/swigit#readme",
+  
+  "publishConfig": {
+    "access": "public"
+  },
+
   "scripts": {
     "build": "tsc",
     "start": "node ./dist/index.js"
