@@ -5,6 +5,7 @@ import chalk from 'chalk';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import dotenv from 'dotenv';
 // Internal Imports
 import { runAudit } from './audit/scanner.js';
 import { generateCommitMessage } from './utils/ai.js';
@@ -16,10 +17,13 @@ const program = new Command();
 async function main() {
     // 1. BOOTSTRAP: Check if setup is needed before anything else
     // We check the directory and the file
-    if (!fs.existsSync(CONFIG_PATH)) {
+    const isSetupCommand = process.argv.includes('setup');
+    // 1. If the config is missing AND they aren't already running 'setup'
+    if (!fs.existsSync(CONFIG_PATH) && !isSetupCommand) {
         console.log(chalk.cyan('👋 Welcome to Swigit! Let\'s get you set up first.'));
         await runSetup();
-        // After setup, we don't exit; we allow the command to continue
+        // Reload env so the current command can use the new key
+        dotenv.config({ path: CONFIG_PATH, override: true });
     }
     // 2. CLI CONFIGURATION
     program
