@@ -7,16 +7,26 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'url'; // Added for path resolution
 
 // Internal Imports
 import { runAudit } from './audit/scanner.js';
 import { generateCommitMessage } from './utils/ai.js';
 import { runSetup } from './engine/setup.js';
 import * as git from './engine/git-wrapper.js';
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-const pkg = require('./package.json'); 
-// Note: Depending on your build setup, you might need to adjust the path to '../package.json'
+
+// --- NEW DYNAMIC VERSION LOGIC ---
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// This looks for package.json in the current folder, 
+// and if not found, looks one level up (crucial for 'dist/' setup)
+let pkgPath = path.join(__dirname, 'package.json');
+if (!fs.existsSync(pkgPath)) {
+    pkgPath = path.join(__dirname, '../package.json');
+}
+const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+// ---------------------------------
 
 const CONFIG_DIR = path.join(os.homedir(), '.swigit');
 const CONFIG_PATH = path.join(CONFIG_DIR, '.env');
@@ -24,18 +34,14 @@ const CONFIG_PATH = path.join(CONFIG_DIR, '.env');
 const program = new Command();
 
 async function main() {
-    // 1. BOOTSTRAP: Check if setup is needed before anything else
-    // We check the directory and the file
-   const isSetupCommand = process.argv.includes('setup');
+    const isSetupCommand = process.argv.includes('setup');
 
-    // 1. If the config is missing AND they aren't already running 'setup'
     if (!fs.existsSync(CONFIG_PATH) && !isSetupCommand) {
         console.log(chalk.cyan('👋 Welcome to Swigit! Let\'s get you set up first.'));
         await runSetup(); 
-        // Reload env so the current command can use the new key
         dotenv.config({ path: CONFIG_PATH, override: true, quiet: true });
     }
-    // 2. CLI CONFIGURATION
+
     program
         .name('swigit')
         .description('The all-in-one Smart Git CLI with CleanPR protection')
