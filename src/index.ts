@@ -13,6 +13,10 @@ import { runAudit } from './audit/scanner.js';
 import { generateCommitMessage } from './utils/ai.js';
 import { runSetup } from './engine/setup.js';
 import * as git from './engine/git-wrapper.js';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const pkg = require('./package.json'); 
+// Note: Depending on your build setup, you might need to adjust the path to '../package.json'
 
 const CONFIG_DIR = path.join(os.homedir(), '.swigit');
 const CONFIG_PATH = path.join(CONFIG_DIR, '.env');
@@ -35,7 +39,7 @@ async function main() {
     program
         .name('swigit')
         .description('The all-in-one Smart Git CLI with CleanPR protection')
-        .version('1.0.5');
+        .version(pkg.version);
 
     // --- Commands ---
     program
