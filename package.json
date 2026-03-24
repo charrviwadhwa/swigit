@@ -1,5 +1,5 @@
 {
-  "name": "@charviwadhwa06/swigit",
+  "name": "swigitt",
   "version": "1.0.12",
   "type": "module",
   "description": "AI-powered Git CLI with CleanPR protection: automate commits, prevent leaks, and ship code in one command.",
